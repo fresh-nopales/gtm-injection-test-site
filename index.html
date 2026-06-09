@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ecommerce dataLayer Test Page</title>
+<style>
+  :root {
+    --bg: #0f1117; --panel: #1a1d27; --border: #2a2f3d;
+    --text: #e6e8ee; --muted: #9aa0ad; --accent: #4f8cff; --green: #3ecf8e; --red: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg); color: var(--text); }
+  header { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+  header h1 { margin: 0 0 4px; font-size: 20px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 20px 24px; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .panel h2 { margin: 0 0 12px; font-size: 14px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { cursor: pointer; border: 1px solid var(--border); background: #232734; color: var(--text);
+    padding: 9px 13px; border-radius: 7px; font-size: 13px; transition: .12s; }
+  button:hover { border-color: var(--accent); background: #2b3142; }
+  button.ga { border-color: #3a4256; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+  .toolbar button { background: #2a2f3d; }
+  #console { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+    background: #0b0d13; border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+    height: 520px; overflow-y: auto; white-space: pre-wrap; }
+  .entry { border-bottom: 1px solid #1d212b; padding: 6px 0; }
+  .entry .ev { color: var(--green); font-weight: 600; }
+  .entry .err { color: var(--red); font-weight: 600; }
+  .entry .ts { color: var(--muted); float: right; }
+  .empty { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Ecommerce dataLayer Test Page</h1>
+  <p>Click a button to push a standard GA4 ecommerce event to <code>window.dataLayer</code>. <strong>No dataLayer is initialized by this page</strong> &mdash; pushes will fail until you load GTM or manually run <code>window.dataLayer = window.dataLayer || [];</code> in the console.</p>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <h2>Events</h2>
+    <div class="btns" id="btns"></div>
+  </div>
+  <div class="panel">
+    <h2>dataLayer Console</h2>
+    <div class="toolbar">
+      <button onclick="clearLog()">Clear</button>
+      <button onclick="dumpDL()">Dump full dataLayer</button>
+    </div>
+    <div id="console"><span class="empty">No events yet. Click a button to push.</span></div>
+  </div>
+</div>
+
+<script>
+// NOTE: dataLayer is intentionally NOT initialized here.
+// Pushes will throw unless you initialize GTM or manually run:
+//   window.dataLayer = window.dataLayer || [];
+
+var consoleEl = document.getElementById('console');
+var hasLogged = false;
+
+function log(eventName, payload) {
+  if (!hasLogged) { consoleEl.innerHTML = ''; hasLogged = true; }
+  var div = document.createElement('div');
+  div.className = 'entry';
+  var ts = new Date().toLocaleTimeString();
+  div.innerHTML = '<span class="ev">' + eventName + '</span><span class="ts">' + ts + '</span>\n'
+    + JSON.stringify(payload, null, 2);
+  consoleEl.prepend(div);
+}
+
+function logError(eventName, err) {
+  if (!hasLogged) { consoleEl.innerHTML = ''; hasLogged = true; }
+  var div = document.createElement('div');
+  div.className = 'entry';
+  var ts = new Date().toLocaleTimeString();
+  div.innerHTML = '<span class="err">' + eventName + ' ✗ push failed</span><span class="ts">'
+    + ts + '</span>\n' + (err && err.message ? err.message : String(err));
+  consoleEl.prepend(div);
+}
+
+function push(obj) {
+  try {
+    // Clear previous ecommerce object per GA4 best practice
+    window.dataLayer.push({ ecommerce: null });
+    window.dataLayer.push(obj);
+    log(obj.event, obj);
+  } catch (err) {
+    logError(obj.event, err);
+  }
+}
+
+function clearLog() {
+  consoleEl.innerHTML = '<span class="empty">Cleared.</span>';
+  hasLogged = false;
+}
+
+function dumpDL() {
+  if (!hasLogged) { consoleEl.innerHTML = ''; hasLogged = true; }
+  var div = document.createElement('div');
+  div.className = 'entry';
+  if (typeof window.dataLayer === 'undefined') {
+    div.innerHTML = '<span class="err">window.dataLayer is undefined</span>\n'
+      + 'Initialize GTM or run: window.dataLayer = window.dataLayer || [];';
+  } else {
+    div.innerHTML = '<span class="ev">window.dataLayer</span>\n' + JSON.stringify(window.dataLayer, null, 2);
+  }
+  consoleEl.prepend(div);
+}
+
+// Sample items
+var item1 = { item_id: 'SKU_123', item_name: 'Classic Tee', item_brand: 'Acme',
+  item_category: 'Apparel', price: 19.99, quantity: 1 };
+var item2 = { item_id: 'SKU_456', item_name: 'Running Shoes', item_brand: 'Acme',
+  item_category: 'Footwear', price: 89.99, quantity: 1 };
+
+// Standard GA4 ecommerce events
+var EVENTS = {
+  view_item_list: { event: 'view_item_list', ecommerce: { item_list_id: 'home_featured',
+    item_list_name: 'Featured', items: [item1, item2] } },
+  select_item: { event: 'select_item', ecommerce: { item_list_id: 'home_featured',
+    item_list_name: 'Featured', items: [item1] } },
+  view_item: { event: 'view_item', ecommerce: { currency: 'USD', value: 19.99, items: [item1] } },
+  add_to_wishlist: { event: 'add_to_wishlist', ecommerce: { currency: 'USD', value: 19.99, items: [item1] } },
+  add_to_cart: { event: 'add_to_cart', ecommerce: { currency: 'USD', value: 19.99, items: [item1] } },
+  remove_from_cart: { event: 'remove_from_cart', ecommerce: { currency: 'USD', value: 19.99, items: [item1] } },
+  view_cart: { event: 'view_cart', ecommerce: { currency: 'USD', value: 109.98, items: [item1, item2] } },
+  begin_checkout: { event: 'begin_checkout', ecommerce: { currency: 'USD', value: 109.98, items: [item1, item2] } },
+  add_shipping_info: { event: 'add_shipping_info', ecommerce: { currency: 'USD', value: 109.98,
+    shipping_tier: 'Ground', items: [item1, item2] } },
+  add_payment_info: { event: 'add_payment_info', ecommerce: { currency: 'USD', value: 109.98,
+    payment_type: 'Credit Card', items: [item1, item2] } },
+  purchase: { event: 'purchase', ecommerce: { transaction_id: 'T_12345', value: 109.98,
+    tax: 8.80, shipping: 5.00, currency: 'USD', coupon: 'SUMMER10', items: [item1, item2] } },
+  refund: { event: 'refund', ecommerce: { transaction_id: 'T_12345', value: 19.99,
+    currency: 'USD', items: [item1] } },
+  view_promotion: { event: 'view_promotion', ecommerce: { promotion_id: 'P_001',
+    promotion_name: 'Summer Sale', creative_name: 'banner_1', creative_slot: 'hero', items: [item1] } },
+  select_promotion: { event: 'select_promotion', ecommerce: { promotion_id: 'P_001',
+    promotion_name: 'Summer Sale', creative_name: 'banner_1', creative_slot: 'hero', items: [item1] } }
+};
+
+var btnWrap = document.getElementById('btns');
+Object.keys(EVENTS).forEach(function(key) {
+  var b = document.createElement('button');
+  b.className = 'ga';
+  b.textContent = key;
+  b.onclick = function() { push(JSON.parse(JSON.stringify(EVENTS[key]))); };
+  btnWrap.appendChild(b);
+});
+</script>
+</body>
+</html>
