@@ -30,7 +30,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   button { cursor: pointer; border: 1px solid var(--border); background: #232734; color: var(--text);
     padding: 9px 13px; border-radius: 7px; font-size: 13px; transition: .12s; }
   button:hover { border-color: var(--accent); background: #2b3142; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
   button.ga { border-color: #3a4256; }
+  .burst { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .burst .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .burst button.primary { border-color: var(--accent); background: #24407a; }
+  .burst .status { margin-top: 8px; color: var(--muted); font-size: 12px; }
   .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
   .toolbar button { background: #2a2f3d; }
   #console { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
@@ -53,6 +58,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <div class="panel">
     <h2>Events</h2>
     <div class="btns" id="btns"></div>
+    <div class="burst">
+      <h2>Random Burst</h2>
+      <div class="row">
+        <button id="burstBtn" class="primary" onclick="startBurst()">Fire 100 random events</button>
+        <button id="burstStop" onclick="stopBurst()" disabled>Stop</button>
+      </div>
+      <div class="status" id="burstStatus">Fires 100 random ecommerce events, one every ~250ms (about 25s total).</div>
+    </div>
   </div>
   <div class="panel">
     <h2>dataLayer Console</h2>
@@ -157,6 +170,59 @@ Object.keys(EVENTS).forEach(function(key) {
   b.onclick = function() { push(JSON.parse(JSON.stringify(EVENTS[key]))); };
   btnWrap.appendChild(b);
 });
+
+// ---- Random burst: 100 random events, spaced out so GTM isn't overwhelmed ----
+var BURST_TOTAL = 100;
+var BURST_MIN_DELAY = 150;  // ms
+var BURST_MAX_DELAY = 350;  // ms
+var burstTimer = null;
+var burstCount = 0;
+var burstId = null;
+
+var burstBtn = document.getElementById('burstBtn');
+var burstStop = document.getElementById('burstStop');
+var burstStatus = document.getElementById('burstStatus');
+
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+function randomEvent() {
+  var keys = Object.keys(EVENTS);
+  var obj = JSON.parse(JSON.stringify(EVENTS[keys[randInt(0, keys.length - 1)]]));
+  var ec = obj.ecommerce;
+  if (ec.items) { ec.items.forEach(function(it) { it.quantity = randInt(1, 5); }); }
+  if (typeof ec.value === 'number') { ec.value = randInt(500, 30000) / 100; }
+  if (ec.transaction_id) { ec.transaction_id = 'T_' + randInt(10000, 99999); }
+  obj.burst_id = burstId;
+  obj.burst_index = burstCount + 1;
+  return obj;
+}
+
+function burstStep() {
+  push(randomEvent());
+  burstCount++;
+  if (burstCount >= BURST_TOTAL) { finishBurst('Done'); return; }
+  burstStatus.textContent = 'Fired ' + burstCount + ' / ' + BURST_TOTAL + ' events…';
+  burstTimer = setTimeout(burstStep, randInt(BURST_MIN_DELAY, BURST_MAX_DELAY));
+}
+
+function startBurst() {
+  if (burstTimer) return;
+  burstCount = 0;
+  burstId = 'burst_' + Date.now();
+  burstBtn.disabled = true;
+  burstStop.disabled = false;
+  burstStep();
+}
+
+function stopBurst() { finishBurst('Stopped'); }
+
+function finishBurst(label) {
+  clearTimeout(burstTimer);
+  burstTimer = null;
+  burstBtn.disabled = false;
+  burstStop.disabled = true;
+  burstStatus.textContent = label + ': fired ' + burstCount + ' / ' + BURST_TOTAL + ' events.';
+}
 </script>
 </body>
 </html>
