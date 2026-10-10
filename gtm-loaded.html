@@ -171,10 +171,10 @@ Object.keys(EVENTS).forEach(function(key) {
   btnWrap.appendChild(b);
 });
 
-// ---- Random burst: 100 random events, spaced out so GTM isn't overwhelmed ----
-var BURST_TOTAL = 100;
-var BURST_MIN_DELAY = 150;  // ms
-var BURST_MAX_DELAY = 350;  // ms
+// ---- Random burst: 500 random events, spaced out so GTM isn't overwhelmed ----
+var BURST_TOTAL = 500;
+var BURST_MIN_DELAY = 100;  // ms
+var BURST_MAX_DELAY = 300;  // ms
 var burstTimer = null;
 var burstCount = 0;
 var burstId = null;
